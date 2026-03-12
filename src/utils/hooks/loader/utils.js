@@ -28,6 +28,12 @@ const scrwlist = new Set([
   )
 ]);
 
+const scrblist = new Set([
+  'youtube.com',
+  'youtu.be',
+  'm.youtube.com'
+]);
+
 export const process = (input, decode = false, prType, engine = "https://www.google.com/search?q=") => {
   const upwefix = isStaticBuild 
     ? new URL('./portal/k12/', location.href).pathname
@@ -47,8 +53,9 @@ export const process = (input, decode = false, prType, engine = "https://www.goo
       break;
     default:
       const url = check(input, engine);
+      const isBlacklisted = [...scrblist].some(d => url.includes(d));
       const match = [...scrwlist].some(d => url.includes(d));
-      prefix = match ? eggowaffle : upwefix;
+      prefix = (!isBlacklisted && match) ? eggowaffle : upwefix;
   }
 
   if (decode) {
@@ -57,10 +64,25 @@ export const process = (input, decode = false, prType, engine = "https://www.goo
     const decoded = uvPart ? mango.dnc(uvPart) : scrPart ? mango.dnc(scrPart) : input;
     return decoded.endsWith('/') ? decoded.slice(0, -1) : decoded;
   } else {
-    const final = check(input, engine);
+    let final = check(input, engine);
     if (!final || final.trim() === '') {
       return null;
     }
+    
+    // Rewrite youtube links to an Invidious frontend to prevent proxy rendering blocks
+    try {
+      const parsed = new URL(final);
+      if (parsed.hostname === 'youtube.com' || parsed.hostname === 'www.youtube.com' || parsed.hostname === 'm.youtube.com' || parsed.hostname === 'youtu.be') {
+          if (parsed.pathname === '/watch' && parsed.searchParams.has('v')) {
+              final = `https://inv.nadeko.net/watch?v=${parsed.searchParams.get('v')}`;
+          } else if (parsed.pathname !== '/') {
+              final = `https://inv.nadeko.net${parsed.pathname}${parsed.search}`;
+          } else {
+              final = 'https://inv.nadeko.net/';
+          }
+      }
+    } catch(e) { /* ignore invalid urls */ }
+
     const encoded = prefix === eggowaffle ? mango.enc(final) : mango.enc(final);
     return `${location.protocol}//${location.host}${prefix}${encoded}`;
   }

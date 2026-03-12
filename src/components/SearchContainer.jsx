@@ -44,7 +44,7 @@ const SearchContainer = memo(function SearchContainer({ logo = true, cls, nav = 
         }
       });
     } else {
-      const processedUrl = navigating.process(strin);
+      const processedUrl = navigating.process(strin, false, options.prType || 'auto', options.engine || undefined);
       if (processedUrl) {
         navigating.go(navigating.id, processedUrl);
       }
